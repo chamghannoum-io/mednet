@@ -1,6 +1,3 @@
-// Simple CORS Proxy for n8n Resume Endpoint
-// Run with: node cors-proxy.js
-
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -8,7 +5,6 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = 3002;
 
-// Enable CORS for all routes
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
@@ -24,7 +20,6 @@ app.post('/resume', async (req, res) => {
         console.log('Proxying request to:', resumeUrl);
         console.log('With data:', JSON.stringify(data, null, 2));
 
-        // Forward the request to n8n
         const response = await fetch(resumeUrl, {
             method: 'POST',
             headers: {
@@ -52,7 +47,6 @@ app.post('/resume', async (req, res) => {
     }
 });
 
-// Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'CORS proxy is running' });
 });
