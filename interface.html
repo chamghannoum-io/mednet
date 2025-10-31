@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedNet - Document Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 200px;
+            margin-bottom: 20px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #16b1b5;
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8fffe;
+        }
+
+        .upload-area:hover {
+            background: #e6f9f9;
+            border-color: #128e91;
+        }
+
+        .upload-area.dragover {
+            background: #d1f5f5;
+            border-color: #0d6d70;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #16b1b5;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e6f9f9;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #16b1b5 0%, #128e91 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(22, 177, 181, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #16b1b5;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            display: none;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-card {
+            background: #f8fffe;
+            border: 2px solid #16b1b5;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #16b1b5;
+        }
+
+        .result-title {
+            font-size: 24px;
+            color: #128e91;
+            font-weight: 600;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .field-item {
+            margin-bottom: 15px;
+        }
+
+        .field-snippet-image {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: block;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .field-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: capitalize;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .field-input:focus {
+            outline: none;
+            border-color: #16b1b5;
+        }
+
+        .checkbox-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-field input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .array-field {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .array-tag {
+            background: #16b1b5;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .document-preview {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .document-preview h3 {
+            color: #128e91;
+            margin-bottom: 20px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #16b1b5;
+            border: 2px solid #16b1b5;
+        }
+
+        .btn-secondary:hover {
+            background: #16b1b5;
+            color: white;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 2px solid #f88;
+            color: #c33;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            color: #2e7d32;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="MedNet Logo" class="logo" id="logoImg">
+            <h1 style="color: #16b1b5; font-size: 32px;">Document Processing System</h1>
+            <p style="color: #666; margin-top: 10px;">Upload your medical documents for automated processing</p>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Click to upload or drag and drop</div>
+                <div class="upload-subtext">Maximum file size: 50 MB (recommended: under 10 MB)</div>
+                <input type="file" id="fileInput" accept="*/*">
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <strong>Selected file:</strong> <span id="fileName"></span><br>
+                <strong>Size:</strong> <span id="fileSize"></span>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="btn" id="uploadBtn" disabled>Process Document</button>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: #666; font-size: 18px;">Processing your document...</p>
+            <p style="color: #999; font-size: 14px; margin-top: 10px;">This may take a few moments</p>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <h2 style="color: #128e91; margin-bottom: 30px; font-size: 28px;">Processing Results</h2>
+            <div id="resultsContainer"></div>
+            
+            <div class="success-message" id="successMessage"></div>
+            
+            <div class="action-buttons">
+                <button class="btn" onclick="saveChanges(event)">Save Changes & Resume Workflow</button>
+                <button class="btn btn-secondary" onclick="exportJSON()">Export JSON</button>
+                <button class="btn btn-secondary" onclick="processAnother()">Process Another Document</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WEBHOOK_URL = 'https://n8n-interns.iohealth.im/webhook/4cac2e27-c4f9-4d2d-8260-44cc8bedb55f';
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB (adjusted for webhook limits)
+
+        const CORS_PROXY_URL = 'http://localhost:3002/resume'; // Update if proxy is on different URL
+
+        let selectedFile = null;
+        let processedData = null;
+
+        // Load the logo - embedded as base64
+        const logoImg = document.getElementById('logoImg');
+        logoImg.src = 'data:image/webp;base64,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';
+
+        // Upload area interactions
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (file.size > MAX_FILE_SIZE) {
+                showError('File size exceeds 50 MB limit. Please try a smaller file or compress your document.');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            uploadBtn.disabled = false;
+            hideError();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        uploadBtn.addEventListener('click', uploadFile);
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('loading').classList.add('show');
+            hideError();
+
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    if (response.status === 413) {
+                        throw new Error('File is too large for the server. The webhook has a file size limit. Please try a smaller file (recommended: under 10 MB).');
+                    }
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                processedData = Array.isArray(data) ? data : [data];
+                displayResults(processedData);
+
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('resultsSection').classList.add('show');
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('uploadSection').style.display = 'block';
+                
+                if (error.message === 'Failed to fetch') {
+                    showError('Connection failed. This could be due to:\n\n1. CORS policy blocking the request (most common)\n2. Network connection issue\n3. Webhook URL is incorrect\n\nTo fix CORS: Your n8n webhook needs to return these headers:\n- Access-Control-Allow-Origin: *\n- Access-Control-Allow-Methods: POST, OPTIONS\n- Access-Control-Allow-Headers: Content-Type');
+                } else {
+                    showError('Failed to process document: ' + error.message);
+                }
+            }
+        }
+
+        function displayResults(dataArray) {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = '';
+
+            dataArray.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="result-header">
+                        <div class="result-title">Record ${index + 1}</div>
+                    </div>
+                    <div class="field-grid" id="fields-${index}"></div>
+                    ${item.base64_image ? `
+                        <div class="document-preview">
+                            <h3>Document Preview</h3>
+                            <img src="${item.base64_image}" alt="Document" class="preview-image">
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+
+                const fieldsContainer = document.getElementById(`fields-${index}`);
+                renderFields(item, fieldsContainer, index);
+            });
+        }
+
+        function renderFields(data, container, recordIndex) {
+            Object.keys(data).forEach(key => {
+                // Skip fields that shouldn't be displayed/edited
+                if (key === 'base64_image' || key === 'resumeUrl') return;
+
+                const fieldItem = document.createElement('div');
+                fieldItem.className = 'field-item';
+
+                // Check if there's an image snippet for this field
+                const imageSnippetKey = `${key}_image_snippet`;
+                if (data[imageSnippetKey]) {
+                    const snippetImg = document.createElement('img');
+                    snippetImg.src = data[imageSnippetKey];
+                    snippetImg.className = 'field-snippet-image';
+                    snippetImg.alt = `${key} snippet`;
+                    fieldItem.appendChild(snippetImg);
+                }
+
+                const label = document.createElement('label');
+                label.className = 'field-label';
+                label.textContent = key.replace(/_/g, ' ');
+
+                const value = data[key];
+
+                if (typeof value === 'boolean') {
+                    const checkboxWrapper = document.createElement('div');
+                    checkboxWrapper.className = 'checkbox-field';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = value;
+                    checkbox.id = `field-${recordIndex}-${key}`;
+                    checkbox.addEventListener('change', (e) => {
+                        processedData[recordIndex][key] = e.target.checked;
+                    });
+
+                    checkboxWrapper.appendChild(checkbox);
+                    checkboxWrapper.appendChild(label);
+                    fieldItem.appendChild(checkboxWrapper);
+
+                } else if (Array.isArray(value)) {
+                    fieldItem.appendChild(label);
+                    const arrayWrapper = document.createElement('div');
+                    arrayWrapper.className = 'array-field';
+                    
+                    // Flatten array if it contains nested arrays
+                    const flatValue = value.flat();
+                    
+                    flatValue.forEach(item => {
+                        const tag = document.createElement('span');
+                        tag.className = 'array-tag';
+                        tag.textContent = item;
+                        arrayWrapper.appendChild(tag);
+                    });
+                    fieldItem.appendChild(arrayWrapper);
+
+                } else {
+                    fieldItem.appendChild(label);
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'field-input';
+                    input.value = value !== null ? value : '';
+                    input.id = `field-${recordIndex}-${key}`;
+                    input.addEventListener('input', (e) => {
+                        processedData[recordIndex][key] = e.target.value;
+                    });
+                    fieldItem.appendChild(input);
+                }
+
+                container.appendChild(fieldItem);
+            });
+        }
+
+        async function saveChanges(event) {
+            if (!processedData || processedData.length === 0) {
+                showError('No data to save');
+                return;
+            }
+
+            // Get the resumeUrl from the first record
+            const resumeUrl = processedData[0].resumeUrl;
+            
+            if (!resumeUrl) {
+                showError('No resumeUrl found in the response. Cannot resume workflow.');
+                return;
+            }
+
+            // Show loading state
+            const saveBtn = event.target;
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving & Resuming Workflow...';
+            hideSuccess();
+
+            try {
+                // Clean the data - remove image snippets, resumeUrl, and base64_image
+                const cleanedData = processedData.map(record => {
+                    const cleaned = {};
+                    Object.keys(record).forEach(key => {
+                        // Skip image snippets, resumeUrl, and base64_image
+                        if (!key.endsWith('_image_snippet') && key !== 'resumeUrl' && key !== 'base64_image') {
+                            cleaned[key] = record[key];
+                        }
+                    });
+                    return cleaned;
+                });
+
+                console.log('Sending cleaned data:', cleanedData);
+
+                let response;
+                
+                if (USE_CORS_PROXY) {
+                    // Use proxy to avoid CORS issues
+                    response = await fetch(CORS_PROXY_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            resumeUrl: resumeUrl,
+                            data: cleanedData
+                        })
+                    });
+                } else {
+                    // Direct connection to n8n
+                    response = await fetch(resumeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(cleanedData)
+                    });
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Failed to resume workflow: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json().catch(() => ({}));
+
+                // Success! Show confirmation
+                showSuccess('✓ Changes saved successfully!\n\nWorkflow resumed with updated data.\n\n' + JSON.stringify(cleanedData, null, 2));
+                console.log('Workflow resumed with cleaned data:', cleanedData);
+                console.log('Resume response:', result);
+                
+                // Keep button disabled after success
+                saveBtn.textContent = '✓ Saved & Workflow Resumed';
+                saveBtn.style.background = '#4caf50';
+
+            } catch (error) {
+                console.error('Error saving changes:', error);
+                
+                // Provide helpful error message
+                let errorMsg = 'Failed to save changes and resume workflow:\n' + error.message;
+                
+                if (error.message === 'Failed to fetch') {
+                    errorMsg += '\n\nThis is a CORS error. Solutions:\n\n';
+                    errorMsg += '1. Add CORS headers to your n8n Wait node response\n';
+                    errorMsg += '2. Run the cors-proxy.js server and set USE_CORS_PROXY = true\n';
+                    errorMsg += '3. Host this HTML on the same domain as n8n';
+                }
+                
+                showError(errorMsg);
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+            hideError();
+        }
+
+        function hideSuccess() {
+            const successDiv = document.getElementById('successMessage');
+            if (successDiv) {
+                successDiv.classList.remove('show');
+            }
+        }
+
+        function exportJSON() {
+            const dataStr = JSON.stringify(processedData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'processed-data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function processAnother() {
+            selectedFile = null;
+            processedData = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            uploadBtn.disabled = true;
+            document.getElementById('resultsSection').classList.remove('show');
+            document.getElementById('uploadSection').style.display = 'block';
+            hideError();
+            hideSuccess();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
