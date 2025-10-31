@@ -182,39 +182,68 @@
             font-weight: 600;
         }
 
-        .field-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .field-item {
-            margin-bottom: 15px;
-        }
-
-        .field-snippet-image {
+        .data-table {
             width: 100%;
-            max-width: 400px;
-            height: auto;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            display: block;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-collapse: collapse;
+            margin-top: 20px;
         }
 
-        .field-label {
-            display: block;
+        .data-table th {
+            background: #16b1b5;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 16px;
+            border: 1px solid #128e91;
+        }
+
+        .data-table td {
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+            border-left: 1px solid #e0e0e0;
+            vertical-align: middle;
+        }
+
+        .data-table td:last-child {
+            border-right: none;
+            border-left: none;
+        }
+
+        .data-table td:nth-child(2) {
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .data-table tr:nth-child(even) {
+            background: #f8fffe;
+        }
+
+        .data-table tr:hover {
+            background: #e6f9f9;
+        }
+
+        .field-name-cell {
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
-            font-size: 14px;
             text-transform: capitalize;
+            width: 25%;
+        }
+
+        .field-value-cell {
+            width: 40%;
+        }
+
+        .field-image-cell {
+            width: 35%;
+            text-align: center;
+            border-left: none !important;
+            border-right: none !important;
         }
 
         .field-input {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: 2px solid #e0e0e0;
             border-radius: 6px;
             font-size: 14px;
@@ -251,6 +280,89 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 500;
+        }
+
+        .field-snippet-image {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            max-height: 150px;
+            object-fit: contain;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transform: rotate(90deg);
+            transform-origin: center center;
+        }
+
+        .validation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .validation-modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 36px;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            color: #c33;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            color: #555;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            text-align: right;
+        }
+
+        .modal-btn {
+            background: #16b1b5;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-btn:hover {
+            background: #128e91;
         }
 
         .document-preview {
@@ -326,6 +438,9 @@
         .success-message.show {
             display: block;
         }
+        .input-error {
+            border-color: #f44336 !important;
+        }
     </style>
 </head>
 <body>
@@ -369,9 +484,24 @@
             <div class="success-message" id="successMessage"></div>
             
             <div class="action-buttons">
-                <button class="btn" onclick="saveChanges(event)">Save Changes & Resume Workflow</button>
+                <button class="btn" onclick="saveChanges(event)">Save Changes</button>
                 <button class="btn btn-secondary" onclick="exportJSON()">Export JSON</button>
                 <button class="btn btn-secondary" onclick="processAnother()">Process Another Document</button>
+            </div>
+        </div>
+
+        <!-- Validation Modal -->
+        <div class="validation-modal" id="validationModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Required Fields Missing</div>
+                </div>
+                <div class="modal-body" id="modalMessage">
+                    Please fill in all required fields before saving.
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn" onclick="closeValidationModal()">OK</button>
+                </div>
             </div>
         </div>
     </div>
@@ -379,11 +509,12 @@
     <script>
         const WEBHOOK_URL = 'https://n8n-interns.iohealth.im/webhook/4cac2e27-c4f9-4d2d-8260-44cc8bedb55f';
         const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB (adjusted for webhook limits)
-
+        const USE_CORS_PROXY = true; // Set to true if using proxy
         const CORS_PROXY_URL = 'http://localhost:3002/resume'; // Update if proxy is on different URL
 
         let selectedFile = null;
         let processedData = null;
+        const REQUIRED_FIELDS = ['invoice_number', 'claimed_amount'];
 
         // Load the logo - embedded as base64
         const logoImg = document.getElementById('logoImg');
@@ -499,7 +630,16 @@
                     <div class="result-header">
                         <div class="result-title">Record ${index + 1}</div>
                     </div>
-                    <div class="field-grid" id="fields-${index}"></div>
+                    <table class="data-table" id="table-${index}">
+                        <thead>
+                            <tr>
+                                <th>Field Name</th>
+                                <th>Value</th>
+                                <th>Image</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fields-${index}"></tbody>
+                    </table>
                     ${item.base64_image ? `
                         <div class="document-preview">
                             <h3>Document Preview</h3>
@@ -517,25 +657,22 @@
         function renderFields(data, container, recordIndex) {
             Object.keys(data).forEach(key => {
                 // Skip fields that shouldn't be displayed/edited
-                if (key === 'base64_image' || key === 'resumeUrl') return;
-
-                const fieldItem = document.createElement('div');
-                fieldItem.className = 'field-item';
-
-                // Check if there's an image snippet for this field
-                const imageSnippetKey = `${key}_image_snippet`;
-                if (data[imageSnippetKey]) {
-                    const snippetImg = document.createElement('img');
-                    snippetImg.src = data[imageSnippetKey];
-                    snippetImg.className = 'field-snippet-image';
-                    snippetImg.alt = `${key} snippet`;
-                    fieldItem.appendChild(snippetImg);
+                if (key === 'base64_image' || key === 'resumeUrl' || key.endsWith('_image_snippet')) {
+                    return;
                 }
 
-                const label = document.createElement('label');
-                label.className = 'field-label';
-                label.textContent = key.replace(/_/g, ' ');
+                const row = document.createElement('tr');
+                
+                // Column 1: Field Name
+                const nameCell = document.createElement('td');
+                nameCell.className = 'field-name-cell';
+                nameCell.textContent = key.replace(/_/g, ' ');
+                row.appendChild(nameCell);
 
+                // Column 2: Editable Value
+                const valueCell = document.createElement('td');
+                valueCell.className = 'field-value-cell';
+                
                 const value = data[key];
 
                 if (typeof value === 'boolean') {
@@ -550,16 +687,18 @@
                         processedData[recordIndex][key] = e.target.checked;
                     });
 
+                    const label = document.createElement('label');
+                    label.textContent = value ? 'Yes' : 'No';
+                    label.style.fontWeight = 'normal';
+
                     checkboxWrapper.appendChild(checkbox);
                     checkboxWrapper.appendChild(label);
-                    fieldItem.appendChild(checkboxWrapper);
+                    valueCell.appendChild(checkboxWrapper);
 
                 } else if (Array.isArray(value)) {
-                    fieldItem.appendChild(label);
                     const arrayWrapper = document.createElement('div');
                     arrayWrapper.className = 'array-field';
                     
-                    // Flatten array if it contains nested arrays
                     const flatValue = value.flat();
                     
                     flatValue.forEach(item => {
@@ -568,28 +707,119 @@
                         tag.textContent = item;
                         arrayWrapper.appendChild(tag);
                     });
-                    fieldItem.appendChild(arrayWrapper);
+                    valueCell.appendChild(arrayWrapper);
 
                 } else {
-                    fieldItem.appendChild(label);
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.className = 'field-input';
                     input.value = value !== null ? value : '';
                     input.id = `field-${recordIndex}-${key}`;
+                    if (REQUIRED_FIELDS.includes(key)) {
+                        input.required = true;
+                        input.placeholder = 'Required field';
+                        if (!input.value) {
+                            input.classList.add('input-error');
+                        }
+                        input.addEventListener('blur', () => {
+                            if (!input.value.trim()) {
+                                input.classList.add('input-error');
+                            } else {
+                                input.classList.remove('input-error');
+                            }
+                        });
+                    }
                     input.addEventListener('input', (e) => {
                         processedData[recordIndex][key] = e.target.value;
+                        if (REQUIRED_FIELDS.includes(key)) {
+                            if (!e.target.value.trim()) {
+                                e.target.classList.add('input-error');
+                            } else {
+                                e.target.classList.remove('input-error');
+                            }
+                        }
                     });
-                    fieldItem.appendChild(input);
+                    valueCell.appendChild(input);
                 }
 
-                container.appendChild(fieldItem);
+                row.appendChild(valueCell);
+
+                // Column 3: Image Snippet
+                const imageCell = document.createElement('td');
+                imageCell.className = 'field-image-cell';
+                
+                const imageSnippetKey = `${key}_image_snippet`;
+                if (data[imageSnippetKey]) {
+                    const snippetImg = document.createElement('img');
+                    snippetImg.src = formatBase64Image(data[imageSnippetKey]);
+                    snippetImg.className = 'field-snippet-image';
+                    snippetImg.alt = `${key} snippet`;
+                    snippetImg.onerror = function() {
+                        console.error(`Failed to load image for ${key}:`, data[imageSnippetKey].substring(0, 50));
+                        this.style.display = 'none';
+                    };
+                    imageCell.appendChild(snippetImg);
+                }
+                // Leave empty if no image - don't show "N/A"
+
+                row.appendChild(imageCell);
+                container.appendChild(row);
             });
+        }
+
+        function validateRequiredFields() {
+            let hasError = false;
+            const missingMessages = [];
+            const fieldDisplayNames = {
+                invoice_number: 'Invoice Number',
+                claimed_amount: 'Claimed Amount'
+            };
+
+            document.querySelectorAll('.field-input').forEach(el => el.classList.remove('input-error'));
+
+            processedData.forEach((record, recordIndex) => {
+                REQUIRED_FIELDS.forEach(key => {
+                    const value = record[key];
+                    const inputEl = document.getElementById(`field-${recordIndex}-${key}`);
+                    if (value === null || value === undefined || String(value).trim() === '') {
+                        hasError = true;
+                        if (inputEl) {
+                            inputEl.classList.add('input-error');
+                            if (!inputEl.placeholder) inputEl.placeholder = 'Required field';
+                        }
+                        const display = fieldDisplayNames[key] || key.replace(/_/g, ' ');
+                        if (!missingMessages.includes(`${display} is a required field.`)) {
+                            missingMessages.push(`${display} is a required field.`);
+                        }
+                    }
+                });
+            });
+
+            if (hasError) {
+                showValidationModal(missingMessages.join('<br>'));
+            }
+            return !hasError;
+        }
+
+        function showValidationModal(message) {
+            const modal = document.getElementById('validationModal');
+            const modalMessage = document.getElementById('modalMessage');
+            modalMessage.innerHTML = message;
+            modal.classList.add('show');
+        }
+
+        function closeValidationModal() {
+            const modal = document.getElementById('validationModal');
+            modal.classList.remove('show');
         }
 
         async function saveChanges(event) {
             if (!processedData || processedData.length === 0) {
                 showError('No data to save');
+                return;
+            }
+
+            if (!validateRequiredFields()) {
                 return;
             }
 
@@ -654,14 +884,15 @@
 
                 const result = await response.json().catch(() => ({}));
 
-                // Success! Show confirmation
-                showSuccess('✓ Changes saved successfully!\n\nWorkflow resumed with updated data.\n\n' + JSON.stringify(cleanedData, null, 2));
+                // Success! Show confirmation then redirect to confirmation page
+                showSuccess('✓ Changes saved successfully!');
                 console.log('Workflow resumed with cleaned data:', cleanedData);
                 console.log('Resume response:', result);
-                
-                // Keep button disabled after success
                 saveBtn.textContent = '✓ Saved & Workflow Resumed';
                 saveBtn.style.background = '#4caf50';
+
+                // Redirect to confirmation page
+                window.location.href = 'confirmation.html';
 
             } catch (error) {
                 console.error('Error saving changes:', error);
@@ -694,6 +925,22 @@
             if (successDiv) {
                 successDiv.classList.remove('show');
             }
+        }
+
+        // Helper function to ensure base64 image has proper data URI format
+        function formatBase64Image(base64String) {
+            if (!base64String) return null;
+            
+            if (base64String.startsWith('data:image')) {
+                return base64String;
+            }
+
+            if (base64String.startsWith('/9j/') || base64String.startsWith('iVBOR')) {
+                const imageType = base64String.startsWith('/9j/') ? 'jpeg' : 'png';
+                return `data:image/${imageType};base64,${base64String}`;
+            }
+            
+            return `data:image/png;base64,${base64String}`;
         }
 
         function exportJSON() {
