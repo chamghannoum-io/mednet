@@ -1,6 +1,6 @@
 # MedNet Document Processing Interface
 
-Professional HTML interface for uploading medical documents to n8n, with editable field validation and workflow resumption.
+HTML interface for uploading medical documents to n8n, with editable field validation and workflow resumption.
 
 ## Quick Start
 
