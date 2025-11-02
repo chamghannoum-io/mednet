@@ -570,17 +570,21 @@
         </div>
     </div>
 
+    <!-- Load configuration file -->
+    <script src="config.js"></script>
+    
     <script>
-        const WEBHOOK_URL = 'https://n8n-test.iohealth.com/webhook/4cac2e27-c4f9-4d2d-8260-44cc8bedb55f';
-        const MAX_FILE_SIZE = 50 * 1024 * 1024; 
-        const USE_CORS_PROXY = true; 
-        const CORS_PROXY_URL = 'http://localhost:3002/resume'; 
+        // Use configuration from config.js
+        const WEBHOOK_URL = CONFIG.WEBHOOK_URL;
+        const MAX_FILE_SIZE = CONFIG.MAX_FILE_SIZE; 
+        const USE_CORS_PROXY = CONFIG.USE_CORS_PROXY; 
+        const CORS_PROXY_URL = CONFIG.CORS_PROXY_RESUME_URL; 
 
         let selectedFiles = [];
         let processedData = null;
-        const REQUIRED_FIELDS = ['claimed_amount'];
-        const EITHER_OR_FIELDS = ['receipt_number', 'invoice_number']; 
-        const MAX_FILES = 5;
+        const REQUIRED_FIELDS = CONFIG.REQUIRED_FIELDS;
+        const EITHER_OR_FIELDS = CONFIG.EITHER_OR_FIELDS; 
+        const MAX_FILES = CONFIG.MAX_FILES;
 
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -616,10 +620,8 @@
         });
 
         function handleFileSelect(files) {
-            // Don't clear selectedFiles - append to existing files instead
             const fileArray = Array.from(files);
 
-            // Check if adding these files would exceed the limit
             if (selectedFiles.length + fileArray.length > MAX_FILES) {
                 showError(`You can only upload up to ${MAX_FILES} files total. Currently selected: ${selectedFiles.length}. Trying to add: ${fileArray.length}.`);
                 return;
@@ -630,7 +632,6 @@
                     showError(`File "${file.name}" exceeds 50 MB limit. Please try a smaller file.`);
                     return;
                 }
-                // Check for duplicates
                 const isDuplicate = selectedFiles.some(existingFile => 
                     existingFile.name === file.name && existingFile.size === file.size
                 );
@@ -677,7 +678,7 @@
 
                 formData.append('webhookUrl', WEBHOOK_URL);
 
-                const uploadUrl = USE_CORS_PROXY ? 'http://localhost:3002/upload' : WEBHOOK_URL;
+                const uploadUrl = USE_CORS_PROXY ? CONFIG.CORS_PROXY_UPLOAD_URL : WEBHOOK_URL;
                 
                 const response = await fetch(uploadUrl, {
                     method: 'POST',
@@ -819,7 +820,6 @@
                     input.addEventListener('input', (e) => {
                         processedData[recordIndex][key] = e.target.value;
                         
-                        // Validate always-required fields
                         if (REQUIRED_FIELDS.includes(key)) {
                             if (!e.target.value.trim()) {
                                 e.target.classList.add('input-error');
@@ -828,7 +828,6 @@
                             }
                         }
                         
-                        // For either/or fields, check if at least one is filled
                         if (EITHER_OR_FIELDS.includes(key)) {
                             validateEitherOrFields(recordIndex);
                         }
@@ -866,13 +865,11 @@
         }
 
         function validateEitherOrFields(recordIndex) {
-            // Check if at least one of the either/or fields is filled
             const hasAtLeastOne = EITHER_OR_FIELDS.some(key => {
                 const value = processedData[recordIndex][key];
                 return value && String(value).trim() !== '';
             });
 
-            // Update error state for both fields
             EITHER_OR_FIELDS.forEach(key => {
                 const inputEl = document.getElementById(`field-${recordIndex}-${key}`);
                 if (inputEl) {
@@ -897,7 +894,6 @@
             document.querySelectorAll('.field-input').forEach(el => el.classList.remove('input-error'));
 
             processedData.forEach((record, recordIndex) => {
-                // Validate always-required fields
                 REQUIRED_FIELDS.forEach(key => {
                     const value = record[key];
                     const inputEl = document.getElementById(`field-${recordIndex}-${key}`);
@@ -914,7 +910,6 @@
                     }
                 });
 
-                // Validate either/or fields (at least one must be filled)
                 const hasEitherOrField = EITHER_OR_FIELDS.some(key => {
                     const value = record[key];
                     return value && String(value).trim() !== '';

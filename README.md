@@ -4,22 +4,36 @@ Professional HTML interface for uploading medical documents to n8n, with editabl
 
 ## Quick Start
 
-### Option 1: Use CORS Proxy (Fastest for Testing)
+### 1. Configure the Application
+
+Copy the example config file and update with your settings:
+```bash
+cp config.example.js config.js
+```
+
+Edit `config.js` with your webhook URL and settings:
+```javascript
+const CONFIG = {
+    WEBHOOK_URL: 'https://your-n8n-instance.com/webhook/your-webhook-id',
+    USE_CORS_PROXY: true,
+    CORS_PROXY_BASE_URL: 'http://localhost:3002',
+    MAX_FILE_SIZE: 50 * 1024 * 1024,
+    MAX_FILES: 5
+};
+```
+
+### 2. Choose Your Setup
+
+**Option A: Use CORS Proxy**
 
 ```bash
-# Install dependencies
 npm install
-
-# Start the proxy server
 npm start
 ```
 
-Then open `mednet-upload.html` in your browser and change:
-```javascript
-const USE_CORS_PROXY = true;
-```
+Then open `interface.html` in your browser.
 
-### Option 2: Fix n8n CORS (Recommended for Production)
+**Option B: Fix n8n CORS**
 
 Add these headers to your n8n webhook response:
 ```
@@ -28,26 +42,30 @@ Access-Control-Allow-Methods: POST, OPTIONS
 Access-Control-Allow-Headers: Content-Type
 ```
 
-See `CORS_FIX_GUIDE.md` for detailed instructions.
+Set `USE_CORS_PROXY: false` in `config.js`.
 
 ## Files
 
-- `mednet-upload.html` - Main interface
+- `interface.html` - Main interface
+- `config.js` - Configuration file (create from config.example.js)
+- `config.example.js` - Configuration template
 - `cors-proxy.js` - CORS proxy server
-- `webhook-test.html` - Diagnostic tool
-- `CORS_FIX_GUIDE.md` - Complete troubleshooting guide
-- `WORKFLOW_DOCUMENTATION.md` - Full workflow documentation
+- `confirmation.html` - Success confirmation page
+- `server.js` - Simple static server
 
 ## Configuration
 
-Edit `mednet-upload.html`:
+All configuration is centralized in `config.js`:
 
-```javascript
-const WEBHOOK_URL = 'https://n8n-interns.iohealth.im/webhook/...';
-
-const USE_CORS_PROXY = false; 
-const CORS_PROXY_URL = 'http://localhost:3002/resume';
-```
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `WEBHOOK_URL` | Your n8n webhook URL | Required |
+| `USE_CORS_PROXY` | Use local CORS proxy | `true` |
+| `CORS_PROXY_BASE_URL` | CORS proxy server URL | `http://localhost:3002` |
+| `MAX_FILE_SIZE` | Maximum file size in bytes | `52428800` (50 MB) |
+| `MAX_FILES` | Maximum number of files | `5` |
+| `REQUIRED_FIELDS` | Always required fields | `['claimed_amount']` |
+| `EITHER_OR_FIELDS` | At least one required | `['receipt_number', 'invoice_number']` |
 
 ## How It Works
 
