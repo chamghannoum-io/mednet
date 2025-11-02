@@ -6,11 +6,6 @@ Professional HTML interface for uploading medical documents to n8n, with editabl
 
 ### 1. Configure the Application
 
-Copy the example config file and update with your settings:
-```bash
-cp config.example.js config.js
-```
-
 Edit `config.js` with your webhook URL and settings:
 ```javascript
 const CONFIG = {
