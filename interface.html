@@ -513,7 +513,7 @@
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📄</div>
                 <div class="upload-text">Click to upload or drag and drop</div>
-                <div class="upload-subtext">You can select up to 5 documents (50 MB each)</div>
+                <div class="upload-subtext">You can select up to 5 documents (10 MB each)</div>
                 <input type="file" id="fileInput" accept="*/*" multiple>
             </div>
             
@@ -571,14 +571,15 @@
     </div>
 
     <script>
-        const WEBHOOK_URL = 'https://n8n-interns.iohealth.im/webhook/4cac2e27-c4f9-4d2d-8260-44cc8bedb55f';
+        const WEBHOOK_URL = 'https://n8n-test.iohealth.com/webhook/4cac2e27-c4f9-4d2d-8260-44cc8bedb55f';
         const MAX_FILE_SIZE = 50 * 1024 * 1024; 
-        const USE_CORS_PROXY = true; // Set to true if using proxy
+        const USE_CORS_PROXY = true; 
         const CORS_PROXY_URL = 'http://localhost:3002/resume'; 
 
         let selectedFiles = [];
         let processedData = null;
-        const REQUIRED_FIELDS = ['invoice_number', 'claimed_amount'];
+        const REQUIRED_FIELDS = ['claimed_amount'];
+        const EITHER_OR_FIELDS = ['receipt_number', 'invoice_number']; 
         const MAX_FILES = 5;
 
         const uploadArea = document.getElementById('uploadArea');
@@ -615,20 +616,27 @@
         });
 
         function handleFileSelect(files) {
-            selectedFiles = [];
+            // Don't clear selectedFiles - append to existing files instead
             const fileArray = Array.from(files);
 
-            if (fileArray.length > MAX_FILES) {
-                showError(`You can only upload up to ${MAX_FILES} files at a time.`);
+            // Check if adding these files would exceed the limit
+            if (selectedFiles.length + fileArray.length > MAX_FILES) {
+                showError(`You can only upload up to ${MAX_FILES} files total. Currently selected: ${selectedFiles.length}. Trying to add: ${fileArray.length}.`);
                 return;
             }
 
             for (let file of fileArray) {
-            if (file.size > MAX_FILE_SIZE) {
+                if (file.size > MAX_FILE_SIZE) {
                     showError(`File "${file.name}" exceeds 50 MB limit. Please try a smaller file.`);
-                return;
+                    return;
                 }
-                selectedFiles.push(file);
+                // Check for duplicates
+                const isDuplicate = selectedFiles.some(existingFile => 
+                    existingFile.name === file.name && existingFile.size === file.size
+                );
+                if (!isDuplicate) {
+                    selectedFiles.push(file);
+                }
             }
 
             const fileList = document.getElementById('fileList');
@@ -661,16 +669,17 @@
             hideError();
 
             try {
-                // Create a single FormData with all files
                 const formData = new FormData();
                 
-                // Append all files to the same FormData
                 selectedFiles.forEach((file, index) => {
                     formData.append('file', file);
                 });
 
-                // Send all files in a single request
-                const response = await fetch(WEBHOOK_URL, {
+                formData.append('webhookUrl', WEBHOOK_URL);
+
+                const uploadUrl = USE_CORS_PROXY ? 'http://localhost:3002/upload' : WEBHOOK_URL;
+                
+                const response = await fetch(uploadUrl, {
                     method: 'POST',
                     body: formData
                 });
@@ -695,7 +704,7 @@
                 document.getElementById('uploadSection').style.display = 'block';
                 
                 if (error.message === 'Failed to fetch') {
-                    showError('Connection failed. This could be due to:\n\n1. CORS policy blocking the request (most common)\n2. Network connection issue\n3. Webhook URL is incorrect\n\nTo fix CORS: Your n8n webhook needs to return these headers:\n- Access-Control-Allow-Origin: *\n- Access-Control-Allow-Methods: POST, OPTIONS\n- Access-Control-Allow-Headers: Content-Type');
+                    showError('Connection failed. This could be due to:\n\n1. CORS policy blocking the request (most common)\n2. Network connection issue\n3. Webhook URL is incorrect\n\nSolution: Make sure the CORS proxy is running (npm run dev)');
                 } else {
                     showError('Failed to process documents: ' + error.message);
                 }
@@ -792,22 +801,25 @@
                     input.className = 'field-input';
                     input.value = value !== null ? value : '';
                     input.id = `field-${recordIndex}-${key}`;
+                    
+                    // Handle always-required fields
                     if (REQUIRED_FIELDS.includes(key)) {
                         input.required = true;
                         input.placeholder = 'Required field';
                         if (!input.value) {
                             input.classList.add('input-error');
                         }
-                        input.addEventListener('blur', () => {
-                            if (!input.value.trim()) {
-                                input.classList.add('input-error');
-                            } else {
-                                input.classList.remove('input-error');
-                            }
-                        });
                     }
+                    
+                    // Handle either/or fields (receipt or invoice number)
+                    if (EITHER_OR_FIELDS.includes(key)) {
+                        input.placeholder = 'Receipt or Invoice Number required';
+                    }
+                    
                     input.addEventListener('input', (e) => {
                         processedData[recordIndex][key] = e.target.value;
+                        
+                        // Validate always-required fields
                         if (REQUIRED_FIELDS.includes(key)) {
                             if (!e.target.value.trim()) {
                                 e.target.classList.add('input-error');
@@ -815,7 +827,13 @@
                                 e.target.classList.remove('input-error');
                             }
                         }
+                        
+                        // For either/or fields, check if at least one is filled
+                        if (EITHER_OR_FIELDS.includes(key)) {
+                            validateEitherOrFields(recordIndex);
+                        }
                     });
+                    
                     valueCell.appendChild(input);
                 }
 
@@ -847,10 +865,31 @@
             });
         }
 
+        function validateEitherOrFields(recordIndex) {
+            // Check if at least one of the either/or fields is filled
+            const hasAtLeastOne = EITHER_OR_FIELDS.some(key => {
+                const value = processedData[recordIndex][key];
+                return value && String(value).trim() !== '';
+            });
+
+            // Update error state for both fields
+            EITHER_OR_FIELDS.forEach(key => {
+                const inputEl = document.getElementById(`field-${recordIndex}-${key}`);
+                if (inputEl) {
+                    if (hasAtLeastOne) {
+                        inputEl.classList.remove('input-error');
+                    } else {
+                        inputEl.classList.add('input-error');
+                    }
+                }
+            });
+        }
+
         function validateRequiredFields() {
             let hasError = false;
             const missingMessages = [];
             const fieldDisplayNames = {
+                receipt_number: 'Receipt Number',
                 invoice_number: 'Invoice Number',
                 claimed_amount: 'Claimed Amount'
             };
@@ -858,6 +897,7 @@
             document.querySelectorAll('.field-input').forEach(el => el.classList.remove('input-error'));
 
             processedData.forEach((record, recordIndex) => {
+                // Validate always-required fields
                 REQUIRED_FIELDS.forEach(key => {
                     const value = record[key];
                     const inputEl = document.getElementById(`field-${recordIndex}-${key}`);
@@ -873,6 +913,25 @@
                         }
                     }
                 });
+
+                // Validate either/or fields (at least one must be filled)
+                const hasEitherOrField = EITHER_OR_FIELDS.some(key => {
+                    const value = record[key];
+                    return value && String(value).trim() !== '';
+                });
+
+                if (!hasEitherOrField) {
+                    hasError = true;
+                    EITHER_OR_FIELDS.forEach(key => {
+                        const inputEl = document.getElementById(`field-${recordIndex}-${key}`);
+                        if (inputEl) {
+                            inputEl.classList.add('input-error');
+                        }
+                    });
+                    if (!missingMessages.includes('Either Receipt Number or Invoice Number is required.')) {
+                        missingMessages.push('Either Receipt Number or Invoice Number is required.');
+                    }
+                }
             });
 
             if (hasError) {
