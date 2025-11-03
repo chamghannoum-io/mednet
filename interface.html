@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MedNet - Document Processor</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=check,content_copy,upload_file" />
     <style>
         * {
             margin: 0;
@@ -66,9 +67,13 @@
         }
 
         .upload-icon {
-            font-size: 48px;
+            font-size: 64px;
             color: #16b1b5;
             margin-bottom: 20px;
+        }
+
+        .upload-icon .material-symbols-outlined {
+            font-size: 64px;
         }
 
         .upload-text {
@@ -499,6 +504,51 @@
         .input-error {
             border-color: #f44336 !important;
         }
+
+        .copy-icon {
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 20px;
+            color: #16b1b5;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            user-select: none;
+        }
+
+        .copy-icon:hover {
+            color: #128e91;
+            transform: scale(1.15);
+        }
+
+        .copy-icon:active {
+            transform: scale(0.9);
+        }
+
+        .copy-icon.copied {
+            color: #4caf50;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24;
+        }
+
+        .field-value-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field-value-wrapper .field-input,
+        .field-value-wrapper .checkbox-field,
+        .field-value-wrapper .array-field {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -511,7 +561,9 @@
 
         <div class="upload-section" id="uploadSection">
             <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📄</div>
+                <div class="upload-icon">
+                    <span class="material-symbols-outlined">upload_file</span>
+                </div>
                 <div class="upload-text">Click to upload or drag and drop</div>
                 <div class="upload-subtext">You can select up to 5 documents (10 MB each)</div>
                 <input type="file" id="fileInput" accept="*/*" multiple>
@@ -763,6 +815,9 @@
                 const value = data[key];
 
                 if (typeof value === 'boolean') {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'field-value-wrapper';
+                    
                     const checkboxWrapper = document.createElement('div');
                     checkboxWrapper.className = 'checkbox-field';
                     
@@ -772,6 +827,7 @@
                     checkbox.id = `field-${recordIndex}-${key}`;
                     checkbox.addEventListener('change', (e) => {
                         processedData[recordIndex][key] = e.target.checked;
+                        label.textContent = e.target.checked ? 'Yes' : 'No';
                     });
 
                     const label = document.createElement('label');
@@ -780,9 +836,23 @@
 
                     checkboxWrapper.appendChild(checkbox);
                     checkboxWrapper.appendChild(label);
-                    valueCell.appendChild(checkboxWrapper);
+                    wrapper.appendChild(checkboxWrapper);
+                    
+                    const copyIcon = document.createElement('span');
+                    copyIcon.className = 'copy-icon material-symbols-outlined';
+                    copyIcon.textContent = 'content_copy';
+                    copyIcon.title = 'Copy to clipboard';
+                    copyIcon.addEventListener('click', () => {
+                        copyToClipboard(checkbox.checked ? 'Yes' : 'No', copyIcon);
+                    });
+                    wrapper.appendChild(copyIcon);
+                    
+                    valueCell.appendChild(wrapper);
 
                 } else if (Array.isArray(value)) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'field-value-wrapper';
+                    
                     const arrayWrapper = document.createElement('div');
                     arrayWrapper.className = 'array-field';
                     
@@ -794,9 +864,23 @@
                         tag.textContent = item;
                         arrayWrapper.appendChild(tag);
                     });
-                    valueCell.appendChild(arrayWrapper);
+                    wrapper.appendChild(arrayWrapper);
+                    
+                    const copyIcon = document.createElement('span');
+                    copyIcon.className = 'copy-icon material-symbols-outlined';
+                    copyIcon.textContent = 'content_copy';
+                    copyIcon.title = 'Copy to clipboard';
+                    copyIcon.addEventListener('click', () => {
+                        copyToClipboard(flatValue.join(', '), copyIcon);
+                    });
+                    wrapper.appendChild(copyIcon);
+                    
+                    valueCell.appendChild(wrapper);
 
                 } else {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'field-value-wrapper';
+                    
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.className = 'field-input';
@@ -833,7 +917,18 @@
                         }
                     });
                     
-                    valueCell.appendChild(input);
+                    wrapper.appendChild(input);
+                    
+                    const copyIcon = document.createElement('span');
+                    copyIcon.className = 'copy-icon material-symbols-outlined';
+                    copyIcon.textContent = 'content_copy';
+                    copyIcon.title = 'Copy to clipboard';
+                    copyIcon.addEventListener('click', () => {
+                        copyToClipboard(input.value, copyIcon);
+                    });
+                    wrapper.appendChild(copyIcon);
+                    
+                    valueCell.appendChild(wrapper);
                 }
 
                 row.appendChild(valueCell);
@@ -1112,6 +1207,44 @@
 
         function hideError() {
             document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        async function copyToClipboard(text, iconElement) {
+            try {
+                await navigator.clipboard.writeText(text);
+                
+                // Visual feedback
+                const originalIcon = iconElement.textContent;
+                iconElement.textContent = 'check';
+                iconElement.classList.add('copied');
+                
+                setTimeout(() => {
+                    iconElement.textContent = originalIcon;
+                    iconElement.classList.remove('copied');
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    const originalIcon = iconElement.textContent;
+                    iconElement.textContent = 'check';
+                    iconElement.classList.add('copied');
+                    setTimeout(() => {
+                        iconElement.textContent = originalIcon;
+                        iconElement.classList.remove('copied');
+                    }, 1500);
+                } catch (err2) {
+                    console.error('Fallback copy failed:', err2);
+                }
+                document.body.removeChild(textarea);
+            }
         }
     </script>
 </body>
