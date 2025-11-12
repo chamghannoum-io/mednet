@@ -3,13 +3,22 @@ const cors = require('cors');
 const fetch = require('node-fetch');
 const FormData = require('form-data');
 const multer = require('multer');
+const path = require('path');
 
 const app = express();
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 const upload = multer();
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// Serve static files (HTML, CSS, images)
+app.use(express.static(__dirname));
+
+// Serve interface.html at root
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'interface.html'));
+});
 
 // File upload proxy endpoint
 app.post('/upload', upload.any(), async (req, res) => {
@@ -21,7 +30,6 @@ app.post('/upload', upload.any(), async (req, res) => {
 
         const formData = new FormData();
         
-        // Append all files
         if (req.files) {
             req.files.forEach(file => {
                 formData.append('file', file.buffer, {
@@ -62,7 +70,6 @@ app.post('/resume', async (req, res) => {
         }
 
         console.log('Proxying request to:', resumeUrl);
-        console.log('With data:', JSON.stringify(data, null, 2));
 
         const response = await fetch(resumeUrl, {
             method: 'POST',
@@ -73,14 +80,11 @@ app.post('/resume', async (req, res) => {
         });
 
         const result = await response.json().catch(() => ({}));
-        
+
         console.log('n8n response:', result);
-        
-        res.json({
-            success: true,
-            status: response.status,
-            data: result
-        });
+
+        // Return n8n response directly (same as /upload endpoint for consistency)
+        res.status(response.status).json(result);
 
     } catch (error) {
         console.error('Proxy error:', error);
@@ -96,8 +100,7 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`\n✓ CORS Proxy Server running on http://localhost:${PORT}`);
-    console.log(`\nUsage:`);
-    console.log(`POST http://localhost:${PORT}/resume`);
-    console.log(`Body: { "resumeUrl": "...", "data": {...} }\n`);
+    console.log(`CORS Proxy Server running on port ${PORT}`);
+    console.log(`Upload endpoint: POST http://localhost:${PORT}/upload`);
+    console.log(`Resume endpoint: POST http://localhost:${PORT}/resume`);
 });
